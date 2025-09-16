@@ -5,9 +5,11 @@ import VideoPanel from './components/VideoPanel';
 import AnalysisPanel from './components/AnalysisPanel';
 import ReportModal from './components/ReportModal';
 import HistoryModal from './components/HistoryModal';
+import SettingsModal from './components/SettingsModal';
 import { initFirebase, onAuthChange, signIn } from './services/firebaseService';
-import type { AnalysisResult, Pose } from './types';
+import type { AnalysisResult, Pose, AnalysisThresholds } from './types';
 import { analyzePose } from './services/analysisService';
+import { DEFAULT_THRESHOLDS } from './constants';
 
 // To access pose-detection library from window
 declare const poseDetection: any;
@@ -19,7 +21,18 @@ const App: React.FC = () => {
     const [latestAnalysis, setLatestAnalysis] = useState<AnalysisResult | null>(null);
     const [isReportModalOpen, setReportModalOpen] = useState<boolean>(false);
     const [isHistoryModalOpen, setHistoryModalOpen] = useState<boolean>(false);
+    const [isSettingsModalOpen, setSettingsModalOpen] = useState<boolean>(false);
     const [user, setUser] = useState<User | null>(null);
+
+    const [thresholds, setThresholds] = useState<AnalysisThresholds>(() => {
+        try {
+            const savedThresholds = localStorage.getItem('postureAnalysisThresholds');
+            return savedThresholds ? JSON.parse(savedThresholds) : DEFAULT_THRESHOLDS;
+        } catch (error) {
+            console.error("Failed to load thresholds from localStorage", error);
+            return DEFAULT_THRESHOLDS;
+        }
+    });
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -53,15 +66,23 @@ const App: React.FC = () => {
             console.error("Firebase initialization failed:", error);
         }
     }, []);
+    
+    useEffect(() => {
+        try {
+            localStorage.setItem('postureAnalysisThresholds', JSON.stringify(thresholds));
+        } catch (error) {
+            console.error("Failed to save thresholds to localStorage", error);
+        }
+    }, [thresholds]);
 
     const handlePoseDetected = useCallback((pose: Pose | null) => {
         if (pose) {
-            const analysis = analyzePose(pose.keypoints);
+            const analysis = analyzePose(pose.keypoints, thresholds);
             setLatestAnalysis(analysis);
         } else {
             setLatestAnalysis(null);
         }
-    }, []);
+    }, [thresholds]);
     
     const handleStart = () => setIsAnalyzing(true);
     const handleStop = () => {
@@ -81,6 +102,7 @@ const App: React.FC = () => {
                     onPoseDetected={handlePoseDetected}
                     onGenerateReport={() => setReportModalOpen(true)}
                     onViewHistory={() => setHistoryModalOpen(true)}
+                    onOpenSettings={() => setSettingsModalOpen(true)}
                     canvasRef={canvasRef}
                     isUserLoggedIn={!!user}
                 />
@@ -102,6 +124,13 @@ const App: React.FC = () => {
                 isOpen={isHistoryModalOpen}
                 onClose={() => setHistoryModalOpen(false)}
                 userId={user?.uid}
+            />
+
+            <SettingsModal
+                isOpen={isSettingsModalOpen}
+                onClose={() => setSettingsModalOpen(false)}
+                thresholds={thresholds}
+                onThresholdsChange={setThresholds}
             />
         </div>
     );

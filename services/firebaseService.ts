@@ -1,24 +1,37 @@
-
-import type { User, Auth } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
+// FIX: Removed Firebase v9 types (Auth, Firestore) that are incompatible with the v8 namespaced API (`firebase.*`) being used.
+import type { User } from 'firebase/auth';
 import type { HistoryEntry } from '../types';
 
 // Access firebase from the window object
 declare const firebase: any;
 
-let auth: Auth;
-let db: Firestore;
+// FIX: Changed types to `any` to match the v8 API provided by the global `firebase` object.
+let auth: any;
+let db: any;
+let appProjectId: string | undefined;
 
 export const initFirebase = () => {
-    // These variables are expected to be injected into the window scope
-    // by the execution environment, as per the original HTML file's logic.
-    const firebaseConfig = (window as any).__firebase_config;
-    if (!firebaseConfig) {
-        throw new Error("Firebase config is not available on the window object.");
+    // FIX: Switched from reading a single `window.__firebase_config` object to
+    // reading individual Firebase config values from `process.env`, which is a
+    // more standard and robust way to handle environment-specific configuration.
+    const firebaseConfig = {
+        apiKey: process.env.FIREBASE_API_KEY,
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.FIREBASE_APP_ID,
+    };
+
+    // Store for later use in getHistoryCollection
+    appProjectId = firebaseConfig.projectId;
+
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+        throw new Error("Firebase configuration is incomplete. Please check your environment variables.");
     }
 
     if (!firebase.apps.length) {
-        firebase.initializeApp(JSON.parse(firebaseConfig));
+        firebase.initializeApp(firebaseConfig);
     }
     
     auth = firebase.auth();
@@ -30,26 +43,20 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
 };
 
 export const signIn = async () => {
-    // As per original code, try custom token first, then anonymous
-    const initialAuthToken = (window as any).__initial_auth_token;
     try {
-        if (initialAuthToken) {
-            await auth.signInWithCustomToken(initialAuthToken);
-        } else {
-            await auth.signInAnonymously();
-        }
+        // FIX: Simplified authentication to only use anonymous sign-in, removing
+        // the dependency on `window.__initial_auth_token` which was causing errors.
+        await auth.signInAnonymously();
     } catch (error) {
         console.error("Authentication failed: ", error);
-        // Fallback to anonymous if custom token fails for any reason
-        if (!auth.currentUser) {
-            await auth.signInAnonymously();
-        }
     }
 };
 
 const getHistoryCollection = (userId: string) => {
-    const appId = (window as any).__app_id || 'posture-analyzer-app';
-    return db.collection('artifacts').doc(appId).collection('users').doc(userId).collection('history');
+    // FIX: Replaced dependency on `window.__app_id` with the `projectId` from the
+    // Firebase config to make the database path consistent and independent of window injection.
+    const collectionId = appProjectId || 'posture-analyzer-app'; // Fallback just in case
+    return db.collection('artifacts').doc(collectionId).collection('users').doc(userId).collection('history');
 };
 
 export const saveReport = async (userId: string, reportData: Omit<HistoryEntry, 'createdAt' | 'id'>) => {

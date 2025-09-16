@@ -1,12 +1,12 @@
 
 import { KEYPOINTS } from '../constants';
-import type { Keypoint, AnalysisResult, AnalysisDetail } from '../types';
+import type { Keypoint, AnalysisResult, AnalysisDetail, AnalysisThresholds } from '../types';
 
 const analyzePart = (keypoints: Keypoint[], analysisFn: () => AnalysisDetail) => {
     return analysisFn();
 };
 
-export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
+export const analyzePose = (keypoints: Keypoint[], thresholds: AnalysisThresholds): AnalysisResult => {
     let totalScore = 0;
     let maxScore = 0;
 
@@ -22,8 +22,8 @@ export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
         const lShoulder = keypoints[KEYPOINTS.left_shoulder];
         if (lEar.score < 0.4 || lShoulder.score < 0.4) return { status: 'Veri Yetersiz', text: 'Analiz için yan profil gerekli.', score: 0 };
         const headForwardness = lEar.x - lShoulder.x;
-        if (headForwardness > 20) return { status: 'Dikkat', text: 'Başınız omuzlarınızın ilerisinde duruyor.', score: 1 };
-        if (headForwardness < -10) return { status: 'Dikkat', text: 'Başınız geriye doğru aşırı eğik.', score: 1 };
+        if (headForwardness > thresholds.headForward) return { status: 'Dikkat', text: 'Başınız omuzlarınızın ilerisinde duruyor.', score: 1 };
+        if (headForwardness < -thresholds.headBackward) return { status: 'Dikkat', text: 'Başınız geriye doğru aşırı eğik.', score: 1 };
         return { status: 'İyi', text: 'Başınız, omuzlarınızla iyi bir hizada.', score: 2 };
     });
 
@@ -33,7 +33,7 @@ export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
         if (lShoulder.score < 0.4 || rShoulder.score < 0.4) return { status: 'Veri Yetersiz', text: 'Analiz için yeterli veri yok.', score: 0 };
         const tilt = Math.abs(lShoulder.y - rShoulder.y);
         const width = Math.abs(lShoulder.x - rShoulder.x);
-        if (tilt > width * 0.05) {
+        if (tilt > width * (thresholds.shoulderTilt / 100)) {
             const higher = lShoulder.y < rShoulder.y ? 'Sol' : 'Sağ';
             return { status: 'Dikkat', text: `Omuzlarınızda asimetri mevcut. ${higher} omuz daha yukarıda.`, score: 1 };
         }
@@ -50,7 +50,7 @@ export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
         const hipMidX = (lHip.x + rHip.x) / 2;
         const deviation = Math.abs(shoulderMidX - hipMidX);
         const shoulderWidth = Math.abs(lShoulder.x - rShoulder.x);
-        if (deviation > shoulderWidth * 0.1) return { status: 'Dikkat', text: 'Omuz ve kalça merkezinizde kayma var. Yanal eğriliğe işaret edebilir.', score: 1 };
+        if (deviation > shoulderWidth * (thresholds.spineDeviation / 100)) return { status: 'Dikkat', text: 'Omuz ve kalça merkezinizde kayma var. Yanal eğriliğe işaret edebilir.', score: 1 };
         return { status: 'İyi', text: 'Omuzlarınız ve kalçalarınız dikey olarak iyi hizalanmış.', score: 2 };
     });
     
@@ -60,7 +60,7 @@ export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
         if (lHip.score < 0.4 || rHip.score < 0.4) return { status: 'Veri Yetersiz', text: 'Analiz için yeterli veri yok.', score: 0 };
         const tilt = Math.abs(lHip.y - rHip.y);
         const width = Math.abs(lHip.x - rHip.x);
-        if (tilt > width * 0.05) {
+        if (tilt > width * (thresholds.hipTilt / 100)) {
             const higher = lHip.y < rHip.y ? 'Sol' : 'Sağ';
             return { status: 'Dikkat', text: `Kalçalarınızda asimetri mevcut. ${higher} kalça daha yukarıda.`, score: 1 };
         }
@@ -76,7 +76,7 @@ export const analyzePose = (keypoints: Keypoint[]): AnalysisResult => {
         const leftKneeInward = lKnee.x > lAnkle.x;
         const rightKneeInward = rKnee.x < rAnkle.x;
         const shoulderWidth = Math.abs(keypoints[KEYPOINTS.left_shoulder].x - keypoints[KEYPOINTS.right_shoulder].x);
-        if ((leftKneeInward && Math.abs(lKnee.x - lAnkle.x) > shoulderWidth * 0.05) || (rightKneeInward && Math.abs(rKnee.x - rAnkle.x) > shoulderWidth * 0.05)) {
+        if ((leftKneeInward && Math.abs(lKnee.x - lAnkle.x) > shoulderWidth * (thresholds.kneeDeviation / 100)) || (rightKneeInward && Math.abs(rKnee.x - rAnkle.x) > shoulderWidth * (thresholds.kneeDeviation / 100))) {
             return { status: 'Dikkat', text: 'Dizlerinizde içe doğru kayma (valgus) olabilir.', score: 1 };
         }
         return { status: 'İyi', text: 'Dizleriniz iyi hizalanmış görünüyor.', score: 2 };

@@ -35,3 +35,12 @@ export interface HistoryEntry extends AnalysisResult {
     reportText: string;
     snapshotImage: string;
 }
+
+export interface AnalysisThresholds {
+    headForward: number;
+    headBackward: number;
+    shoulderTilt: number;
+    spineDeviation: number;
+    hipTilt: number;
+    kneeDeviation: number;
+}

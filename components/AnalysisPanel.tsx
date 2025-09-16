@@ -17,10 +17,19 @@ const AnalysisCard: React.FC<{ title: string; detail: AnalysisDetail }> = ({ tit
         }
     };
 
+    const scoreColorClass = detail.score === 2 ? 'text-green-400' : detail.score === 1 ? 'text-yellow-400' : 'text-gray-500';
+
     return (
         <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-700 p-4 rounded-lg">
-            <h3 className="font-semibold text-lg text-cyan-400">{title}</h3>
-            <p className={getStatusClass(detail.status)}>{detail.text}</p>
+            <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-lg text-cyan-400">{title}</h3>
+                {detail.status !== 'Veri Yetersiz' && (
+                    <span className={`font-mono text-base font-semibold bg-gray-900 px-3 py-1 rounded-md ${scoreColorClass}`}>
+                        {detail.score}/2
+                    </span>
+                )}
+            </div>
+            <p className={`${getStatusClass(detail.status)} mt-1`}>{detail.text}</p>
         </div>
     );
 };

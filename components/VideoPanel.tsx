@@ -1,9 +1,8 @@
-
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import type { Pose } from '../types';
 import { KEYPOINTS, SKELETON } from '../constants';
 import Loader from './Loader';
-import { StartIcon, StopIcon, SwitchCameraIcon, ReportIcon, HistoryIcon } from './icons';
+import { StartIcon, StopIcon, SwitchCameraIcon, ReportIcon, HistoryIcon, SettingsIcon } from './icons';
 
 interface VideoPanelProps {
     detector: any | null;
@@ -14,6 +13,7 @@ interface VideoPanelProps {
     onPoseDetected: (pose: Pose | null) => void;
     onGenerateReport: () => void;
     onViewHistory: () => void;
+    onOpenSettings: () => void;
     canvasRef: React.RefObject<HTMLCanvasElement>;
     isUserLoggedIn: boolean;
 }
@@ -21,18 +21,21 @@ interface VideoPanelProps {
 const VideoPanel: React.FC<VideoPanelProps> = ({
     detector, isLoadingModel, isAnalyzing,
     onStart, onStop, onPoseDetected,
-    onGenerateReport, onViewHistory, canvasRef, isUserLoggedIn
+    onGenerateReport, onViewHistory, onOpenSettings, canvasRef, isUserLoggedIn
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [cameraError, setCameraError] = useState<string | null>(null);
-    const animationFrameId = useRef<number>();
+    // FIX: Initialized useRef with `null` to resolve "Expected 1 arguments, but got 0" error,
+    // which can occur with older React type definitions.
+    const animationFrameId = useRef<number | null>(null);
     
     // FIX: Replaced forEach with a for...of loop to resolve an obscure error.
     // This is a more robust way to iterate and stop media tracks.
     const stopCamera = useCallback(() => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const mediaStream = videoRef.current.srcObject as MediaStream;
+        // FIX: Replaced unsafe type assertion with a type guard to ensure srcObject is a MediaStream.
+        if (videoRef.current && videoRef.current.srcObject instanceof MediaStream) {
+            const mediaStream = videoRef.current.srcObject;
             for (const track of mediaStream.getTracks()) {
                 track.stop();
             }
@@ -137,14 +140,20 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
             animationFrameId.current = requestAnimationFrame(renderLoop);
         } else {
             stopCamera();
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
+            // FIX: Copied ref value to a local variable to allow TypeScript to narrow the type
+            // for a type-safe call to cancelAnimationFrame.
+            const frameId = animationFrameId.current;
+            if (frameId) {
+                cancelAnimationFrame(frameId);
             }
         }
         return () => {
             stopCamera();
-            if (animationFrameId.current) {
-                cancelAnimationFrame(animationFrameId.current);
+            // FIX: Copied ref value to a local variable to allow TypeScript to narrow the type
+            // for a type-safe call to cancelAnimationFrame.
+            const frameId = animationFrameId.current;
+            if (frameId) {
+                cancelAnimationFrame(frameId);
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -190,8 +199,8 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
                 )}
             </div>
 
-            <div className="mt-6 grid grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-md">
-                <button onClick={handleStartClick} disabled={isLoadingModel || isAnalyzing} className="col-span-full flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 disabled:bg-gray-500 disabled:cursor-not-allowed">
+            <div className="mt-6 grid grid-cols-2 gap-4 w-full max-w-md">
+                <button onClick={handleStartClick} disabled={isLoadingModel || isAnalyzing} className="col-span-2 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 disabled:bg-gray-500 disabled:cursor-not-allowed">
                     <StartIcon /> Analizi Başlat
                 </button>
                 <button onClick={onStop} disabled={!isAnalyzing} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500">
@@ -203,8 +212,11 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
                 <button onClick={onGenerateReport} disabled={!isAnalyzing} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500">
                     <ReportIcon /> Rapor Oluştur
                 </button>
-                <button onClick={onViewHistory} disabled={!isUserLoggedIn || isAnalyzing} className="col-span-full lg:col-span-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                <button onClick={onViewHistory} disabled={!isUserLoggedIn || isAnalyzing} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
                    <HistoryIcon /> Geçmişi Görüntüle
+                </button>
+                <button onClick={onOpenSettings} disabled={isAnalyzing} className="col-span-2 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                   <SettingsIcon /> Ayarlar
                 </button>
             </div>
         </div>
