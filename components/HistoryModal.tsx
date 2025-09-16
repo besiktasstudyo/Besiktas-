@@ -146,7 +146,12 @@ const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, userId }) 
                     <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
                 </div>
                 <div className="p-6 overflow-y-auto flex flex-col md:flex-row gap-6">
-                    {isLoading ? (
+                    {!userId ? (
+                        <div className="w-full text-center py-16 text-gray-400">
+                            <h3 className="text-xl font-bold mb-2 text-cyan-400">Misafir Modu</h3>
+                            <p>Analiz geçmişinizi görüntülemek ve kaydetmek için lütfen giriş yapın.</p>
+                        </div>
+                    ) : isLoading ? (
                         <div className="w-full flex justify-center items-center h-96"><Loader /></div>
                     ) : (
                         <>

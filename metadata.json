@@ -1,5 +1,5 @@
 {
-  "name": "USMASTER Posture Analysis Tool",
+  "name": "USMASTER Postür Analiz V1",
   "description": "Duruşunuzu kameranızı kullanarak gerçek zamanlı olarak analiz etmenizi, zaman içindeki ilerlemenizi takip etmenizi ve ayrıntılı raporlar oluşturmanızı sağlayan gelişmiş bir araçtır. Anında geri bildirim ve puanlar sağlamak için makine öğrenimini kullanır.",
   "requestFramePermissions": [
     "camera"

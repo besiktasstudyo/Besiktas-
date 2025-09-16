@@ -44,3 +44,12 @@ export interface AnalysisThresholds {
     hipTilt: number;
     kneeDeviation: number;
 }
+
+export interface UserProfile {
+    email: string;
+    subscriptionEndDate: {
+        seconds: number;
+        nanoseconds: number;
+    } | Date;
+    activeSessionToken?: string;
+}

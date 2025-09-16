@@ -1,8 +1,9 @@
+
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import type { Pose } from '../types';
 import { KEYPOINTS, SKELETON } from '../constants';
 import Loader from './Loader';
-import { StartIcon, StopIcon, SwitchCameraIcon, ReportIcon, HistoryIcon, SettingsIcon } from './icons';
+import { StartIcon, StopIcon, SwitchCameraIcon, ReportIcon, HistoryIcon, SettingsIcon, LogoutIcon, UserIcon } from './icons';
 
 interface VideoPanelProps {
     detector: any | null;
@@ -14,6 +15,8 @@ interface VideoPanelProps {
     onGenerateReport: () => void;
     onViewHistory: () => void;
     onOpenSettings: () => void;
+    onOpenProfile: () => void;
+    onLogout: () => void;
     canvasRef: React.RefObject<HTMLCanvasElement>;
     isUserLoggedIn: boolean;
 }
@@ -21,19 +24,14 @@ interface VideoPanelProps {
 const VideoPanel: React.FC<VideoPanelProps> = ({
     detector, isLoadingModel, isAnalyzing,
     onStart, onStop, onPoseDetected,
-    onGenerateReport, onViewHistory, onOpenSettings, canvasRef, isUserLoggedIn
+    onGenerateReport, onViewHistory, onOpenSettings, onOpenProfile, onLogout, canvasRef, isUserLoggedIn
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
     const [cameraError, setCameraError] = useState<string | null>(null);
-    // FIX: Initialized useRef with `null` to resolve "Expected 1 arguments, but got 0" error,
-    // which can occur with older React type definitions.
     const animationFrameId = useRef<number | null>(null);
     
-    // FIX: Replaced forEach with a for...of loop to resolve an obscure error.
-    // This is a more robust way to iterate and stop media tracks.
     const stopCamera = useCallback(() => {
-        // FIX: Replaced unsafe type assertion with a type guard to ensure srcObject is a MediaStream.
         if (videoRef.current && videoRef.current.srcObject instanceof MediaStream) {
             const mediaStream = videoRef.current.srcObject;
             for (const track of mediaStream.getTracks()) {
@@ -140,8 +138,6 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
             animationFrameId.current = requestAnimationFrame(renderLoop);
         } else {
             stopCamera();
-            // FIX: Copied ref value to a local variable to allow TypeScript to narrow the type
-            // for a type-safe call to cancelAnimationFrame.
             const frameId = animationFrameId.current;
             if (frameId) {
                 cancelAnimationFrame(frameId);
@@ -149,8 +145,6 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         }
         return () => {
             stopCamera();
-            // FIX: Copied ref value to a local variable to allow TypeScript to narrow the type
-            // for a type-safe call to cancelAnimationFrame.
             const frameId = animationFrameId.current;
             if (frameId) {
                 cancelAnimationFrame(frameId);
@@ -177,9 +171,11 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
         setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
     };
 
+    const buttonStyle = "flex items-center justify-center gap-2 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 disabled:bg-gray-500 disabled:cursor-not-allowed";
+
     return (
         <div className="flex-1 flex flex-col items-center bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700">
-            <h1 className="text-3xl font-bold text-center mb-2 text-cyan-400">Gelişmiş Postür Analiz Aracı</h1>
+            <h1 className="text-3xl font-bold text-center mb-2 text-cyan-400">USMASTER Postür Analiz V1</h1>
             <p className="text-gray-400 text-center mb-4">Bulut tabanlı depolama ile duruşunuzu analiz edin ve gelişiminizi takip edin.</p>
 
             <div className="relative w-full max-w-md aspect-[3/4] bg-black rounded-lg overflow-hidden shadow-inner">
@@ -199,25 +195,39 @@ const VideoPanel: React.FC<VideoPanelProps> = ({
                 )}
             </div>
 
-            <div className="mt-6 grid grid-cols-2 gap-4 w-full max-w-md">
-                <button onClick={handleStartClick} disabled={isLoadingModel || isAnalyzing} className="col-span-2 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-transform transform hover:scale-105 disabled:bg-gray-500 disabled:cursor-not-allowed">
+            <div className="mt-6 grid grid-cols-3 gap-3 w-full max-w-md">
+                <button onClick={handleStartClick} disabled={isLoadingModel || isAnalyzing} className={`${buttonStyle} col-span-3 bg-cyan-600 hover:bg-cyan-700`}>
                     <StartIcon /> Analizi Başlat
                 </button>
-                <button onClick={onStop} disabled={!isAnalyzing} className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500">
+                <button onClick={onStop} disabled={!isAnalyzing} className={`${buttonStyle} bg-red-600 hover:bg-red-700`}>
                    <StopIcon /> Durdur
                 </button>
-                <button onClick={handleSwitchCamera} disabled={!isAnalyzing} className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500">
-                    <SwitchCameraIcon /> Kamera Değiştir
+                <button onClick={handleSwitchCamera} disabled={!isAnalyzing} className={`${buttonStyle} bg-purple-600 hover:bg-purple-700`}>
+                    <SwitchCameraIcon /> Kamera
                 </button>
-                <button onClick={onGenerateReport} disabled={!isAnalyzing} className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500">
-                    <ReportIcon /> Rapor Oluştur
+                <button onClick={onGenerateReport} disabled={!isAnalyzing} className={`${buttonStyle} bg-green-600 hover:bg-green-700`}>
+                    <ReportIcon /> Rapor
                 </button>
-                <button onClick={onViewHistory} disabled={!isUserLoggedIn || isAnalyzing} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
-                   <HistoryIcon /> Geçmişi Görüntüle
+                <button onClick={onViewHistory} disabled={!isUserLoggedIn || isAnalyzing} className={`${buttonStyle} bg-blue-600 hover:bg-blue-700`}>
+                   <HistoryIcon /> Geçmiş
                 </button>
-                <button onClick={onOpenSettings} disabled={isAnalyzing} className="col-span-2 flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                 <button onClick={onOpenSettings} disabled={isAnalyzing} className={`${buttonStyle} bg-gray-600 hover:bg-gray-700`}>
                    <SettingsIcon /> Ayarlar
                 </button>
+                
+                {isUserLoggedIn ? (
+                    <>
+                        <button onClick={onOpenProfile} className={`${buttonStyle} bg-indigo-600 hover:bg-indigo-700`}>
+                           <UserIcon /> Profil
+                        </button>
+                        <button onClick={onLogout} className={`${buttonStyle} col-span-3 bg-orange-600 hover:bg-orange-700`}>
+                           <LogoutIcon /> Çıkış Yap
+                        </button>
+                    </>
+                ) : (
+                    <div className="col-span-1"></div>
+                )}
+
             </div>
         </div>
     );
